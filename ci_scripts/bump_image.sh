@@ -41,7 +41,9 @@ sed -i "s|image: kubeflix-$micro_name:${version}|image: kubeflix-$micro_name:${n
 eval $(minikube docker-env)
 
 echo "Building image inside minikube: $build_context"
-docker build -t "kubeflix-$micro_name:$new_version" -f "$build_context/Dockerfile" ..
+cd "$build_context"
+docker build -t kubeflix-search:$new_version .
+cd -
 
 echo "Updating the cluster"
 kubectl apply -f "$micro_file"

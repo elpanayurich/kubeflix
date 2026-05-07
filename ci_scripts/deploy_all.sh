@@ -11,6 +11,11 @@ minikube addons enable ingress
 
 kubectl wait --namespace ingress-nginx --for=condition=ready pod --selector=app.kubernetes.io/component=controller --timeout=120s
 
+kubectl wait --namespace ingress-nginx \
+  --for=jsonpath='{.subsets[0].addresses[0].ip}' \
+  endpoints ingress-nginx-controller-admission \
+  --timeout=60s
+
 kubectl apply -f "$PROJECT_ROOT/search/k8s/postgres.yaml"
 kubectl apply -f "$PROJECT_ROOT/search/k8s/search.yaml"
 kubectl apply -f "$PROJECT_ROOT/frontend/k8s/"
