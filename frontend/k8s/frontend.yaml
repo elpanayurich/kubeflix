@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend-container
-        image: kubeflix-frontend:v1
+        image: kubeflix-frontend:v2
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 80
@@ -30,4 +30,4 @@ spec:
     - protocol: TCP
       port: 80
       targetPort: 80
-  type: ClusterIP
+  type: LoadBalancer

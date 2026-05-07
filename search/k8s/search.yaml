@@ -14,21 +14,13 @@ spec:
     spec:
       containers:
       - name: search-container
-        image: kubeflix-search:v15
+        image: kubeflix-search:v17
         env:
           - name: ADMIN_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: search-api-secret
                 key: admin-pass
-        volumeMounts:
-        - name: movie-csv-storage
-          mountPath: /app/data
-      volumes:
-      - name: movie-csv-storage
-        hostPath:
-          path: "/home/kali/Desktop/pruebask8s/search/data"
-          type: Directory
 ---
 apiVersion: v1
 kind: Service
