@@ -1,0 +1,47 @@
+Matar pods
+-----------
+
+kubectl delete -f search.yaml
+kubectl delete pod --all
+
+
+Build e iniciar
+----------------
+
+docker build -t kubeflix-search:v3 .
+minikube image load kubeflix-search:v3
+(actualizar en search.yaml la v2 a v3)
+kubectl apply -f search.yaml
+
+Ingress
+--------
+
+minikube addons enable ingress
+
+Navegador
+---------
+
+echo "$(minikube ip) kubeflix.local" | sudo tee -a /etc/hosts
+
+
+
+
+Todo el despliegue de cero
+---------------------------
+
+minikube start --driver=docker
+minikube addons enable ingress
+kubectl apply -f search/k8s/postgres.yaml
+kubectl apply -f search/k8s/search.yaml
+kubectl apply -f frontend/k8s/
+minikube image load kubeflix-search:v5
+minikube image load kubeflix-frontend:v1
+
+testear con: http://kubeflix.local/
+
+
+
+Comandos pros
+--------------
+
+kubectl rollout restart deployment search-dep -> Si por alguna razón quieres forzar el reinicio sin cambiar la versión (por ejemplo, si has cambiado algo en el entorno)
