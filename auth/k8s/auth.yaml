@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: auth-container
-        image: kubeflix-auth:v1
+        image: kubeflix-auth:v2
         imagePullPolicy: Never
         env:
           - name: POSTGRES_HOST

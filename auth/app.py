@@ -3,6 +3,8 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_bcrypt import Bcrypt
 import os
 from flask import request, jsonify
+import jwt
+import datetime
 
 app = Flask(__name__)
 
@@ -64,6 +66,31 @@ def register():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': 'Database error', 'details': str(e)}), 500
+
+SECRET_KEY = "kubeflix123"
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    username = data.get('username')
+    password = data.get('password')
+
+    user = User.query.filter_by(username=username).first()
+
+    if user and bcrypt.check_password_hash(user.password_hash, password):
+        token = jwt.encode({
+            'user_id': user.id,
+            'username': user.username,
+            'tier': user.tier,
+            'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
+        }, SECRET_KEY, algorithm="HS256")
+
+        return jsonify({
+            "message": "Login exitoso",
+            "token": token
+        }), 200
+    
+    return jsonify({"message": "Credenciales inválidas"}), 401
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)

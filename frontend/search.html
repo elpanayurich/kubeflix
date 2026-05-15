@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KubeFlix - Buscador</title>
+    <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+    <div class="container" style="max-width: 800px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h1>KubeFlix</h1>
+            <button id="logoutBtn" style="width: auto; padding: 5px 15px; background: #333;">Salir</button>
+        </div>
+        
+        <div class="search-box">
+            <input type="text" id="query" placeholder="¿Qué quieres ver hoy?">
+            <button id="searchBtn">Buscar</button>
+        </div>
+        
+        <ul id="results"></ul>
+        <p id="message"></p>
+    </div>
+    <script src="/script.js?v=final"></script>
+</body>
+</html>
