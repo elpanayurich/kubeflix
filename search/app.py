@@ -4,12 +4,16 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import or_
 import os
 import csv
+import jwt
+from functools import wraps
 
 app = Flask(__name__)
 CORS(app)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:kubeflix123@search-db-service:5432/search_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+SECRET_KEY = "kubeflix123" 
 
 db = SQLAlchemy(app)
 
@@ -37,7 +41,38 @@ with app.app_context():
     if Movie.query.count() == 0:
         seed_from_csv()
 
+# --- DECORADOR JWT PARA PROTEGER RUTAS ---
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        
+        # Extraemos el token del header
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            try:
+                token = auth_header.split(" ")[1]
+            except IndexError:
+                return jsonify({"message": "Formato de token inválido"}), 401
+
+        if not token:
+            return jsonify({"message": "Token ausente, acceso denegado"}), 401
+
+        # Validamos matemáticamente la firma del JWT
+        try:
+            data = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        except jwt.ExpiredSignatureError:
+            return jsonify({"message": "El token ha expirado"}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"message": "Token inválido o corrupto"}), 401
+
+        return f(*args, **kwargs)
+    
+    return decorated
+# ----------------------------------------
+
 @app.route('/search', methods=['GET'])
+@token_required
 def search():
     query = request.args.get('q', '')
     movies_found = Movie.query.filter(

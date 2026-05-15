@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: search-container
-        image: kubeflix-search:v17
+        image: kubeflix-search:v18
         env:
           - name: ADMIN_PASSWORD
             valueFrom:
