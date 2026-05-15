@@ -45,3 +45,15 @@ Comandos pros
 --------------
 
 kubectl rollout restart deployment search-dep -> Si por alguna razón quieres forzar el reinicio sin cambiar la versión (por ejemplo, si has cambiado algo en el entorno)
+
+
+Conectarse a la base de datos
+------------------------------
+
+kubectl exec -it <NOMBRE_DE_TU_POD_DB> -- psql -U postgres -d auth_db
+
+kubectl exec -it $(kubectl get pods | grep auth-db-dep | cut -d' ' -f1 | head -n 1) -- psql -U postgres -d auth_db
+
+\dt -> Ver tablas creadas
+SELECT * FROM users; -> Ver los users
+\q -> Salir

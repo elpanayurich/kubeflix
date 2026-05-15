@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-dep
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-api
+  template:
+    metadata:
+      labels:
+        app: auth-api
+    spec:
+      containers:
+      - name: auth-container
+        image: kubeflix-auth:v1
+        imagePullPolicy: Never
+        env:
+          - name: POSTGRES_HOST
+            value: "auth-db-service"
+          - name: POSTGRES_DB
+            value: "auth_db"
+          - name: POSTGRES_USER
+            value: "postgres"
+          - name: POSTGRES_PASSWORD
+            value: "kubeflix123"
+          - name: JWT_SECRET
+            value: "clave_super_secreta_kubeflix_99"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+spec:
+  type: ClusterIP
+  selector:
+    app: auth-api
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 5000
