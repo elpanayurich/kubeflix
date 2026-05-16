@@ -1,33 +1,31 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend-dep
+  name: payments-dep
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
-      app: frontend-ui
+      app: payments-api
   template:
     metadata:
       labels:
-        app: frontend-ui
+        app: payments-api
     spec:
       containers:
-      - name: frontend-container
-        image: kubeflix-frontend:v17
+      - name: payments-container
+        image: kubeflix-payments:v3
         imagePullPolicy: Never
-        ports:
-        - containerPort: 80
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend-service
+  name: payments-service
 spec:
   selector:
-    app: frontend-ui
+    app: payments-api
   ports:
     - protocol: TCP
       port: 80
-      targetPort: 80
-  type: LoadBalancer
+      targetPort: 5000
+  type: ClusterIP

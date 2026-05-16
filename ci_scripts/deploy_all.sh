@@ -40,7 +40,8 @@ eval $(minikube docker-env)
 minikube addons enable ingress
 
 # 5. BUILDS (Optimizados)
-micros=("search" "frontend" "auth")
+# ---> AÑADIDO 'payments' AL ARRAY <---
+micros=("search" "frontend" "auth" "payments")
 for micro in "${micros[@]}"; do
     micro_file=$(grep -rl "image: kubeflix-${micro}" "$PROJECT_ROOT" | head -n 1)
     [ -z "$micro_file" ] && continue
@@ -64,6 +65,8 @@ apply_with_retry "$PROJECT_ROOT/auth/k8s/auth-ingress.yaml"
 # Resto de la app
 kubectl apply -f "$PROJECT_ROOT/search/k8s/"
 kubectl apply -f "$PROJECT_ROOT/frontend/k8s/"
+# ---> AÑADIDO DESPLIEGUE DE PAYMENTS <---
+kubectl apply -f "$PROJECT_ROOT/payments/k8s/"
 
 kubectl create secret generic search-api-secret --from-literal=admin-pass="Admin007" --dry-run=client -o yaml | kubectl apply -f -
 

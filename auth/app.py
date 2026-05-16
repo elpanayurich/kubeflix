@@ -1,96 +1,116 @@
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-from flask_bcrypt import Bcrypt
 import os
-from flask import request, jsonify
 import jwt
 import datetime
+from flask import Flask, request, jsonify
+from flask_sqlalchemy import SQLAlchemy
+from flask_cors import CORS
+from functools import wraps
+from werkzeug.security import generate_password_hash, check_password_hash
 
 app = Flask(__name__)
+CORS(app)
 
-DB_USER = os.getenv('POSTGRES_USER', 'postgres')
-DB_PASS = os.getenv('POSTGRES_PASSWORD', 'kubeflix123')
-DB_HOST = os.getenv('POSTGRES_HOST', 'auth-db-service')
-DB_NAME = os.getenv('POSTGRES_DB', 'auth_db')
-
-app.config['SQLALCHEMY_DATABASE_URI'] = f'postgresql://{DB_USER}:{DB_PASS}@{DB_HOST}:5432/{DB_NAME}'
+# --- CONFIGURATION ---
+# The secret key must be identical across all microservices to validate JWTs
+app.config['SECRET_KEY'] = "kubeflix123"
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:kubeflix123@auth-db-service:5432/auth_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
-bcrypt = Bcrypt(app)
 
+# --- MODELS ---
 class User(db.Model):
     __tablename__ = 'users'
-
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    tier = db.Column(db.String(20), default='basic')
+    password = db.Column(db.String(255), nullable=False)
+    tier = db.Column(db.String(20), default='free') # 'free', 'gold', 'premium'
 
-    def __repr__(self):
-        return f'<User {self.username} - Tier: {self.tier}>'
-
+# Initialize database
 with app.app_context():
     db.create_all()
+
+# --- DECORATOR ---
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            try:
+                token = auth_header.split(" ")[1]
+            except IndexError:
+                return jsonify({"message": "Invalid token format"}), 401
+        
+        if not token:
+            return jsonify({"message": "Token is missing"}), 401
+        
+        try:
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = User.query.filter_by(username=data['username']).first()
+        except:
+            return jsonify({"message": "Token is invalid or expired"}), 401
+            
+        return f(current_user, *args, **kwargs)
+    return decorated
+
+# --- PUBLIC ENDPOINTS ---
 
 @app.route('/register', methods=['POST'])
 def register():
     data = request.get_json()
-
-    if not data or 'username' not in data or 'password' not in data:
-        return jsonify({'error': 'Missing username or password'}), 400
-
-    username = data['username']
-    password = data['password']
-    tier = data.get('tier', 'basic')
-
-    existing_user = User.query.filter_by(username=username).first()
-    if existing_user:
-        return jsonify({'error': 'Username already exists'}), 409
-
-    hashed_password = bcrypt.generate_password_hash(password).decode('utf-8')
-
-    new_user = User(username=username, password_hash=hashed_password, tier=tier)
+    if not data or not data.get('username') or not data.get('password'):
+        return jsonify({"message": "Missing credentials"}), 400
     
-    try:
-        db.session.add(new_user)
-        db.session.commit()
-        return jsonify({
-            'message': 'User created successfully',
-            'user': {
-                'id': new_user.id,
-                'username': new_user.username,
-                'tier': new_user.tier
-            }
-        }), 201
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': 'Database error', 'details': str(e)}), 500
-
-SECRET_KEY = "kubeflix123"
+    if User.query.filter_by(username=data['username']).first():
+        return jsonify({"message": "User already exists"}), 400
+    
+    hashed_pw = generate_password_hash(data['password'], method='pbkdf2:sha256')
+    new_user = User(username=data['username'], password=hashed_pw, tier=data.get('tier', 'free'))
+    
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"message": "User created successfully"}), 201
 
 @app.route('/login', methods=['POST'])
 def login():
     data = request.get_json()
-    username = data.get('username')
-    password = data.get('password')
-
-    user = User.query.filter_by(username=username).first()
-
-    if user and bcrypt.check_password_hash(user.password_hash, password):
+    user = User.query.filter_by(username=data.get('username')).first()
+    
+    if user and check_password_hash(user.password, data.get('password')):
         token = jwt.encode({
-            'user_id': user.id,
             'username': user.username,
             'tier': user.tier,
             'exp': datetime.datetime.utcnow() + datetime.timedelta(hours=24)
-        }, SECRET_KEY, algorithm="HS256")
-
-        return jsonify({
-            "message": "Login exitoso",
-            "token": token
-        }), 200
+        }, app.config['SECRET_KEY'], algorithm="HS256")
+        
+        return jsonify({'token': token})
     
-    return jsonify({"message": "Credenciales inválidas"}), 401
+    return jsonify({'message': 'Invalid credentials'}), 401
+
+# --- INTERNAL ENDPOINT (Called by Payments Service) ---
+
+@app.route('/internal/update-tier', methods=['PUT'])
+@token_required
+def update_user_tier(current_user):
+    """
+    Internal endpoint to upgrade user status.
+    Expects JSON: {"new_tier": "premium"}
+    """
+    data = request.get_json()
+    new_tier = data.get('new_tier')
+    
+    if not new_tier:
+        return jsonify({"message": "New tier not provided"}), 400
+    
+    try:
+        current_user.tier = new_tier
+        db.session.commit()
+        print(f"User {current_user.username} upgraded to {new_tier}")
+        return jsonify({"message": f"Successfully updated to {new_tier}"}), 200
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"message": "Error updating database", "error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000)

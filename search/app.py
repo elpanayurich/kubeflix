@@ -71,7 +71,7 @@ def token_required(f):
     return decorated
 # ----------------------------------------
 
-@app.route('/search', methods=['GET'])
+@app.route('/api/search', methods=['GET'])
 @token_required
 def search():
     query = request.args.get('q', '')
@@ -86,7 +86,7 @@ def search():
 
 ADMIN_PASSWORD = os.getenv('ADMIN_PASSWORD')
 
-@app.route('/add', methods=['POST'])
+@app.route('/api/add', methods=['POST'])
 def add_movie():
     auth_key = request.headers.get('X-Admin-Token')
     if not ADMIN_PASSWORD or auth_key != ADMIN_PASSWORD:
@@ -99,7 +99,7 @@ def add_movie():
     db.session.commit()
     return jsonify({"message": f"'{new_movie.title}' added correctly"}), 201
 
-@app.route('/delete', methods=['DELETE'])
+@app.route('/api/delete', methods=['DELETE'])
 def delete_movie():
     auth_key = request.headers.get('X-Admin-Token')
     if not ADMIN_PASSWORD or auth_key != ADMIN_PASSWORD:
