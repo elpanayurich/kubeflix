@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
       - name: frontend-container
-        image: kubeflix-frontend:v17
+        image: kubeflix-frontend:v18
         imagePullPolicy: Never
         ports:
         - containerPort: 80

@@ -30,7 +30,7 @@ sudo chown -R 999:999 "$PROJECT_ROOT/auth/data/postgres-db"
 sudo chmod -R 777 "$PROJECT_ROOT/auth/data/postgres-db"
 
 # 3. ARRANQUE NATIVO
-minikube start --driver=docker --mount --mount-string="$PROJECT_ROOT/auth/data/postgres-db:/minikube-data"
+minikube start --driver=docker --memory=8192 --cpus=8 --mount --mount-string="$PROJECT_ROOT/auth/data/postgres-db:/minikube-data"
 
 # 4. FIX PERMISOS INTERNOS (Para que Minikube deje entrar a Postgres)
 # Esto soluciona el 'Permission Denied' que vimos en el ssh

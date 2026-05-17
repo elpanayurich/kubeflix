@@ -1,7 +1,7 @@
 // -- config --
-const AUTH_URL = "http://kubeflix.local/auth";
-const SEARCH_URL = "http://kubeflix.local/api/search";
-const PAYMENTS_URL = "http://kubeflix.local";
+const AUTH_URL = "/auth";
+const SEARCH_URL = "/api/search";
+const PAYMENTS_URL = "";
 
 // -- redirection logic --
 const token = localStorage.getItem('token');

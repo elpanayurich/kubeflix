@@ -57,3 +57,10 @@ kubectl exec -it $(kubectl get pods | grep auth-db-dep | cut -d' ' -f1 | head -n
 \dt -> Ver tablas creadas
 SELECT * FROM users; -> Ver los users
 \q -> Salir
+
+
+Compartir web
+--------------
+
+kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80 -> en una terminal
+ngrok http 8080 --host-header="kubeflix.local" -> en otra
