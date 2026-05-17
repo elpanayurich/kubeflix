@@ -4,3 +4,4 @@ flask-bcrypt
 psycopg2-binary
 PyJWT
 flask-cors
+kafka-python-ng

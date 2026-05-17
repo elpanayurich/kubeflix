@@ -15,6 +15,13 @@ spec:
       containers:
       - name: search-container
         image: kubeflix-search:v21
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          tcpSocket:
+            port: 5000
+          initialDelaySeconds: 2
+          periodSeconds: 5
         env:
           - name: ADMIN_PASSWORD
             valueFrom:

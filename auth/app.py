@@ -1,44 +1,54 @@
 import os
 import jwt
 import datetime
+import json
 from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from kafka import KafkaProducer
 
 app = Flask(__name__)
 CORS(app)
 
-# --- CONFIGURATION ---
-# The secret key must be identical across all microservices to validate JWTs
+# --- Configuration ---
 app.config['SECRET_KEY'] = "kubeflix123"
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:kubeflix123@auth-db-service:5432/auth_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# --- MODELS ---
+# --- Kafka Producer Setup ---
+producer = None
+try:
+    producer = KafkaProducer(
+        bootstrap_servers=['kafka-service:9092'],
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+    print("Connected to Kafka successfully.")
+except Exception as e:
+    print(f"Failed to connect to Kafka: {e}")
+
+# --- Models ---
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True, nullable=False)
     password = db.Column(db.String(255), nullable=False)
-    tier = db.Column(db.String(20), default='free') # 'free', 'gold', 'premium'
+    tier = db.Column(db.String(20), default='free')
 
-# Initialize database
 with app.app_context():
     db.create_all()
 
-# --- DECORATOR ---
+# --- Auth Decorator ---
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
             try:
-                token = auth_header.split(" ")[1]
+                token = request.headers['Authorization'].split(" ")[1]
             except IndexError:
                 return jsonify({"message": "Invalid token format"}), 401
         
@@ -46,6 +56,7 @@ def token_required(f):
             return jsonify({"message": "Token is missing"}), 401
         
         try:
+            # Decode JWT and find user
             data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
             current_user = User.query.filter_by(username=data['username']).first()
         except:
@@ -54,7 +65,7 @@ def token_required(f):
         return f(current_user, *args, **kwargs)
     return decorated
 
-# --- PUBLIC ENDPOINTS ---
+# --- Public Endpoints ---
 
 @app.route('/register', methods=['POST'])
 def register():
@@ -65,11 +76,26 @@ def register():
     if User.query.filter_by(username=data['username']).first():
         return jsonify({"message": "User already exists"}), 400
     
+    # Create new user and hash password
     hashed_pw = generate_password_hash(data['password'], method='pbkdf2:sha256')
     new_user = User(username=data['username'], password=hashed_pw, tier=data.get('tier', 'free'))
     
     db.session.add(new_user)
     db.session.commit()
+
+    # Publish event to Kafka topic 'new-users'
+    if producer:
+        try:
+            event_data = {
+                "user_id": new_user.id,
+                "username": new_user.username
+            }
+            producer.send('new-users', value=event_data)
+            producer.flush()
+            print(f"Event sent to Kafka: {event_data}")
+        except Exception as e:
+            print(f"Failed to send to Kafka: {e}")
+
     return jsonify({"message": "User created successfully"}), 201
 
 @app.route('/login', methods=['POST'])
@@ -77,6 +103,7 @@ def login():
     data = request.get_json()
     user = User.query.filter_by(username=data.get('username')).first()
     
+    # Verify user and password
     if user and check_password_hash(user.password, data.get('password')):
         token = jwt.encode({
             'username': user.username,
@@ -88,15 +115,11 @@ def login():
     
     return jsonify({'message': 'Invalid credentials'}), 401
 
-# --- INTERNAL ENDPOINT (Called by Payments Service) ---
+# --- Internal Endpoints ---
 
 @app.route('/internal/update-tier', methods=['PUT'])
 @token_required
 def update_user_tier(current_user):
-    """
-    Internal endpoint to upgrade user status.
-    Expects JSON: {"new_tier": "premium"}
-    """
     data = request.get_json()
     new_tier = data.get('new_tier')
     

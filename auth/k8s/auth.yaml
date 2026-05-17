@@ -14,8 +14,15 @@ spec:
     spec:
       containers:
       - name: auth-container
-        image: kubeflix-auth:v9
+        image: kubeflix-auth:v10
         imagePullPolicy: Never
+        ports:
+        - containerPort: 5000
+        readinessProbe:
+          tcpSocket:
+            port: 5000
+          initialDelaySeconds: 2
+          periodSeconds: 5
         env:
           - name: POSTGRES_HOST
             value: "auth-db-service"

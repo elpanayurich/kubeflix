@@ -64,3 +64,24 @@ Compartir web
 
 kubectl port-forward -n ingress-nginx service/ingress-nginx-controller 8080:80 -> en una terminal
 ngrok http 8080 --host-header="kubeflix.local" -> en otra
+
+
+
+
+
+Imprimir todo el repo en un file
+---------------------------------
+
+(
+  echo "### TREE ###"
+  tree -r
+
+  echo -e "\n### FILES ###"
+
+  find . \
+    -path "*/.git" -prune -o \
+    -path "*/pgdata" -prune -o \
+    -name "repo_dump.txt" -prune -o \
+    -type f \
+    -exec sh -c 'echo -e "\n===== $1 ====="; cat "$1"' _ {} \;
+) > repo_dump.txt

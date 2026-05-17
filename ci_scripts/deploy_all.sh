@@ -65,8 +65,10 @@ apply_with_retry "$PROJECT_ROOT/auth/k8s/auth-ingress.yaml"
 # Resto de la app
 kubectl apply -f "$PROJECT_ROOT/search/k8s/"
 kubectl apply -f "$PROJECT_ROOT/frontend/k8s/"
-# ---> AÑADIDO DESPLIEGUE DE PAYMENTS <---
 kubectl apply -f "$PROJECT_ROOT/payments/k8s/"
+
+# Kafka
+kubectl apply -f kafka/k8s/kafka.yaml
 
 kubectl create secret generic search-api-secret --from-literal=admin-pass="Admin007" --dry-run=client -o yaml | kubectl apply -f -
 
